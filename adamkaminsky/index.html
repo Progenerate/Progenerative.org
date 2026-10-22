@@ -1,71 +1,67 @@
 
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Adam E. Kaminsky — Portfolio</title>
+
   <style>
- 
-body {
-  margin: 12px;
-  background: #e8e5dc;
-  color: #222222;
-  font-family: Arial, Helvetica, sans-serif;
-  font-weight: 400;
-}
+    body {
+      margin: 12px;
+      background: #e8e5dc;
+      color: #222222;
+      font-family: Arial, Helvetica, sans-serif;
+      font-weight: 400;
+    }
 
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
 
-/* All tabs: neutral background by default */
-.tabs button {
-  padding: 9px 12px;
-  background: #d4d0c5 !important;
-  color: #222222 !important;
-  border: 1px solid #77776e;
-  border-radius: 4px 4px 0 0;
-  cursor: pointer;
-font-family: Arial, Helvetica, sans-serif;
-font-size: 13px;
-font-weight: 400;
-letter-spacing: 0.8px;
-}
+    .tabs button {
+      padding: 9px 12px;
+      background: #d4d0c5 !important;
+      color: #222222 !important;
+      border: 1px solid #77776e;
+      border-radius: 4px 4px 0 0;
+      cursor: pointer;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 13px;
+      font-weight: 400;
+      letter-spacing: 0.8px;
+    }
 
-/* Selected tab: show its individual project color */
-.tabs button.active {
-  background: var(--tab-color, #56664b) !important;
-  color: var(--tab-text, #ffffff) !important;
-  border-color: var(--tab-color, #56664b);
-}
+    .tabs button.active {
+      background: var(--tab-color, #56664b) !important;
+      color: var(--tab-text, #ffffff) !important;
+      border-color: var(--tab-color, #56664b);
+    }
 
-/* Optional: subtle hover effect for inactive tabs */
-.tabs button:not(.active):hover {
-  background: #c5c2b7 !important;
-  color: #222222 !important;
-}
+    .tabs button:not(.active):hover {
+      background: #c5c2b7 !important;
+      color: #222222 !important;
+    }
 
-
-/* Keep the selected tab distinct when hovering */
-.tabs button.active:hover {
-  background: #56664b;
-  color: #ffffff;
-}
-
-
+    .tabs button.active:hover {
+      background: var(--tab-color, #56664b) !important;
+      color: var(--tab-text, #ffffff) !important;
+    }
 
     .toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 10px;
-  background: #d4d0c5;
-  border: 1px solid #888;
-
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding: 10px;
+      background: #d4d0c5;
+      border: 1px solid #888;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
 
     button, select {
       font-size: 14px;
@@ -96,32 +92,37 @@ letter-spacing: 0.8px;
     }
   </style>
 </head>
+
 <body>
-
   <h1>ADAM E. KAMINSKY</h1>
-  
 
-<nav class="tabs" id="tabs">
-  <button class="active" data-pdf="Kaminsky_Portfolio.pdf"
-    style="--tab-color: #56664b; --tab-text: #ffffff;">
-    Portfolio
-  </button>
+  <nav class="tabs" id="tabs">
+    <button
+      class="active"
+      data-pdf="Kaminsky_Portfolio.pdf"
+      style="--tab-color: #56664b; --tab-text: #ffffff;">
+      Portfolio
+    </button>
 
-<button data-pdf="Rio_Puerco_Report.pdf"
-  style="--tab-color: #996565; --tab-text: #ffffff;">
-  Rio Puerco Report
-</button>
+    <button
+      data-pdf="Rio_Puerco_Report.pdf"
+      style="--tab-color: #996565; --tab-text: #ffffff;">
+      Rio Puerco Report
+    </button>
 
-<button data-pdf="Indigenous_Rights_Toolkit.pdf"
-  style="--tab-color: #AD975E; --tab-text: #222222;">
-  Indigenous Rights Toolkit
-</button>
+    <button
+      data-pdf="Indigenous_Rights_Toolkit.pdf"
+      style="--tab-color: #AD975E; --tab-text: #222222;">
+      Indigenous Rights Toolkit
+    </button>
 
-<button data-pdf="Negotiations_Manual.pdf"
-  style="--tab-color: #7474AD; --tab-text: #ffffff;">
-  Negotiations Manual
-</button>
-  
+    <button
+      data-pdf="Negotiations_Manual.pdf"
+      style="--tab-color: #7474AD; --tab-text: #ffffff;">
+      Negotiations Manual
+    </button>
+  </nav>
+
   <div class="toolbar">
     <button id="minus">−</button>
     <span id="zoom-label">100%</span>
@@ -154,6 +155,7 @@ letter-spacing: 0.8px;
 
     async function loadPDF(filename) {
       const thisRender = ++renderId;
+
       viewer.replaceChildren();
       status.textContent = "Loading " + filename + "…";
       pageCount.textContent = "";
@@ -162,66 +164,82 @@ letter-spacing: 0.8px;
       try {
         const task = pdfjsLib.getDocument(filename);
         const documentPDF = await task.promise;
+
         if (thisRender !== renderId) return;
 
         pdf = documentPDF;
         status.textContent = "";
         pageCount.textContent = pdf.numPages + " pages";
+
+        // Reset to the beginning when changing projects.
+        window.scrollTo(0, 0);
         await renderPages(thisRender);
       } catch (error) {
         if (thisRender !== renderId) return;
+
         status.textContent =
           "Could not load " + filename +
-          ". Upload that PDF to this folder, using the exact filename.";
+          ". Check that the PDF is in this folder and the filename matches.";
         console.error(error);
       }
     }
 
     async function renderPages(thisRender = renderId) {
       if (!pdf) return;
-const currentPDF = pdf;
 
-// Remember which page and where on it we're looking
-const viewerRect = viewer.getBoundingClientRect();
-const markerY = viewerRect.top;
-const pages = Array.from(viewer.querySelectorAll(".page"));
+      const currentPDF = pdf;
 
-let savedPageIndex = 0;
-let savedPageOffset = 0;
+      // Save the page and approximate position currently being viewed.
+      const markerY = Math.max(
+        110,
+        viewer.getBoundingClientRect().top
+      );
 
-for (let i = 0; i < pages.length; i++) {
-  const rect = pages[i].getBoundingClientRect();
+      const oldPages = Array.from(
+        viewer.querySelectorAll(".page")
+      );
 
-  if (rect.bottom > markerY) {
-    savedPageIndex = i;
-    savedPageOffset = markerY - rect.top;
-    break;
-  }
-}
+      let savedPageIndex = 0;
+      let savedPageOffset = 0;
 
-viewer.replaceChildren();
+      for (let i = 0; i < oldPages.length; i++) {
+        const rect = oldPages[i].getBoundingClientRect();
 
-viewer.replaceChildren();
-zoomLabel.textContent = Math.round(zoom * 100) + "%";
-     
+        if (rect.bottom > markerY) {
+          savedPageIndex = i;
+          savedPageOffset = markerY - rect.top;
+          break;
+        }
+      }
+
+      viewer.replaceChildren();
+      zoomLabel.textContent = Math.round(zoom * 100) + "%";
+
       for (let n = 1; n <= currentPDF.numPages; n++) {
         if (thisRender !== renderId) return;
 
         const page = await currentPDF.getPage(n);
         if (thisRender !== renderId) return;
 
-     const base = page.getViewport({ scale: 1 });
-const availableWidth = Math.max(240, viewer.clientWidth - 24);
-const availableHeight = window.innerHeight - 140;
+        const base = page.getViewport({ scale: 1 });
+        const availableWidth = Math.max(
+          240,
+          viewer.clientWidth - 24
+        );
+        const availableHeight = Math.max(
+          200,
+          window.innerHeight - 140
+        );
 
-let scale;
-if (fitWidth) {
-  scale = availableWidth / base.width;
-} else if (fitHeight) {
-  scale = availableHeight / base.height;
-} else {
-  scale = zoom;
-} 
+        let scale;
+
+        if (fitWidth) {
+          scale = availableWidth / base.width;
+        } else if (fitHeight) {
+          scale = availableHeight / base.height;
+        } else {
+          scale = zoom;
+        }
 
         const viewport = page.getViewport({ scale });
         const canvas = document.createElement("canvas");
@@ -246,30 +264,35 @@ if (fitWidth) {
             ? [ratio, 0, 0, ratio, 0, 0]
             : null
         }).promise;
-  // Restore the same page and approximate position within it
-const newPages = viewer.querySelectorAll(".page");
-const targetPage = newPages[savedPageIndex];
+      }
 
-if (targetPage) {
-  const newRect = targetPage.getBoundingClientRect();
-  const currentRect = viewer.getBoundingClientRect();
+      if (thisRender !== renderId) return;
 
-  viewer.scrollTop += newRect.top - currentRect.top - savedPageOffset;
-}
+      // Restore the same page and viewing position after all pages render.
+      const newPages = viewer.querySelectorAll(".page");
+      const targetPage = newPages[savedPageIndex];
+
+      if (targetPage) {
+        const newRect = targetPage.getBoundingClientRect();
+        const desiredTop = markerY - savedPageOffset;
+
+        window.scrollBy(0, newRect.top - desiredTop);
+      }
     }
-    }
 
+    // Switch projects.
     document.getElementById("tabs").addEventListener("click", event => {
       const button = event.target.closest("button[data-pdf]");
       if (!button) return;
 
-      document.querySelectorAll(".tabs button").forEach(tab =>
-        tab.classList.toggle("active", tab === button)
-      );
+      document.querySelectorAll("#tabs button").forEach(tab => {
+        tab.classList.toggle("active", tab === button);
+      });
 
       loadPDF(button.dataset.pdf);
     });
 
+    // Zoom out.
     document.getElementById("minus").onclick = () => {
       fitWidth = false;
       fitHeight = false;
@@ -277,6 +300,7 @@ if (targetPage) {
       renderPages();
     };
 
+    // Zoom in.
     document.getElementById("plus").onclick = () => {
       fitWidth = false;
       fitHeight = false;
@@ -284,29 +308,35 @@ if (targetPage) {
       renderPages();
     };
 
-   document.getElementById("fit").onclick = () => {
-  fitWidth = true;
-  fitHeight = false;
-  renderPages();
-};
+    // Fit page width.
+    document.getElementById("fit").onclick = () => {
+      fitWidth = true;
+      fitHeight = false;
+      renderPages();
+    };
 
-document.getElementById("fitHeight").onclick = () => {
-  fitWidth = false;
-  fitHeight = true;
-  renderPages();
-};
+    // Fit page height.
+    document.getElementById("fitHeight").onclick = () => {
+      fitWidth = false;
+      fitHeight = true;
+      renderPages();
+    };
 
- 
-
+    // Recalculate fitted pages when the window changes size.
     let resizeTimer;
+
     window.addEventListener("resize", () => {
       clearTimeout(resizeTimer);
+
       resizeTimer = setTimeout(() => {
-      if (fitWidth || fitHeight) renderPages();
+        if (fitWidth || fitHeight) {
+          renderPages();
+        }
       }, 200);
     });
 
-    loadPDF("portfolio.pdf");
+    // Load the portfolio using the actual filename from the tab.
+    loadPDF("Kaminsky_Portfolio.pdf");
   </script>
 </body>
 </html>
