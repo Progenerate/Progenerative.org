@@ -14,11 +14,12 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Project navigation tabs */
+
+/* All tabs: neutral background by default */
 .tabs button {
   padding: 9px 12px;
-  background: var(--tab-color, #d4d0c5) !important;
-  color: var(--tab-text, #222222) !important;
+  background: #d4d0c5 !important;
+  color: #222222 !important;
   border: 1px solid #77776e;
   border-radius: 4px 4px 0 0;
   cursor: pointer;
@@ -28,18 +29,19 @@ body {
   letter-spacing: 0.3px;
 }
 
-/* Currently selected project */
+/* Selected tab: show its individual project color */
 .tabs button.active {
-  background: #56664b;
-  color: #ffffff;
-  border-color: #56664b;
+  background: var(--tab-color, #56664b) !important;
+  color: var(--tab-text, #ffffff) !important;
+  border-color: var(--tab-color, #56664b);
 }
 
-/* Hover effect */
-.tabs button:hover {
-  background: #aab29e;
-  color: #222222;
+/* Optional: subtle hover effect for inactive tabs */
+.tabs button:not(.active):hover {
+  background: #c5c2b7 !important;
+  color: #222222 !important;
 }
+
 
 /* Keep the selected tab distinct when hovering */
 .tabs button.active:hover {
