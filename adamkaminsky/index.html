@@ -181,9 +181,25 @@ letter-spacing: 0.8px;
       if (!pdf) return;
 const currentPDF = pdf;
 
-// Remember the current scroll position
-const savedScrollTop = viewer.scrollTop;
-const savedScrollLeft = viewer.scrollLeft;
+// Remember which page and where on it we're looking
+const viewerRect = viewer.getBoundingClientRect();
+const markerY = viewerRect.top;
+const pages = Array.from(viewer.querySelectorAll(".page"));
+
+let savedPageIndex = 0;
+let savedPageOffset = 0;
+
+for (let i = 0; i < pages.length; i++) {
+  const rect = pages[i].getBoundingClientRect();
+
+  if (rect.bottom > markerY) {
+    savedPageIndex = i;
+    savedPageOffset = markerY - rect.top;
+    break;
+  }
+}
+
+viewer.replaceChildren();
 
 viewer.replaceChildren();
 zoomLabel.textContent = Math.round(zoom * 100) + "%";
@@ -230,9 +246,16 @@ if (fitWidth) {
             ? [ratio, 0, 0, ratio, 0, 0]
             : null
         }).promise;
-      }  // Restore the previous scroll position
-      viewer.scrollTop = savedScrollTop;
-      viewer.scrollLeft = savedScrollLeft;
+  // Restore the same page and approximate position within it
+const newPages = viewer.querySelectorAll(".page");
+const targetPage = newPages[savedPageIndex];
+
+if (targetPage) {
+  const newRect = targetPage.getBoundingClientRect();
+  const currentRect = viewer.getBoundingClientRect();
+
+  viewer.scrollTop += newRect.top - currentRect.top - savedPageOffset;
+}
     }
     }
 
