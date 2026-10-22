@@ -127,6 +127,7 @@ letter-spacing: 0.8px;
     <span id="zoom-label">100%</span>
     <button id="plus">+</button>
     <button id="fit">FIT WIDTH</button>
+    <button id="fitHeight">FIT HEIGHT</button>
     <span id="page-count"></span>
   </div>
 
@@ -148,6 +149,7 @@ letter-spacing: 0.8px;
     let pdf = null;
     let zoom = 1;
     let fitWidth = true;
+    let fitHeight = false;
     let renderId = 0;
 
     async function loadPDF(filename) {
@@ -188,11 +190,18 @@ letter-spacing: 0.8px;
         const page = await currentPDF.getPage(n);
         if (thisRender !== renderId) return;
 
-        const base = page.getViewport({ scale: 1 });
-        const availableWidth = Math.max(240, viewer.clientWidth - 24);
-        const scale = fitWidth
-          ? availableWidth / base.width
-          : zoom;
+     const base = page.getViewport({ scale: 1 });
+const availableWidth = Math.max(240, viewer.clientWidth - 24);
+const availableHeight = window.innerHeight - 140;
+
+let scale;
+if (fitWidth) {
+  scale = availableWidth / base.width;
+} else if (fitHeight) {
+  scale = availableHeight / base.height;
+} else {
+  scale = zoom;
+} 
 
         const viewport = page.getViewport({ scale });
         const canvas = document.createElement("canvas");
@@ -233,20 +242,29 @@ letter-spacing: 0.8px;
 
     document.getElementById("minus").onclick = () => {
       fitWidth = false;
+      fitHeight = false;
       zoom = Math.max(0.25, zoom - 0.1);
       renderPages();
     };
 
     document.getElementById("plus").onclick = () => {
       fitWidth = false;
+      fitHeight = false;
       zoom = Math.min(3, zoom + 0.1);
       renderPages();
     };
 
-    document.getElementById("fit").onclick = () => {
-      fitWidth = true;
-      renderPages();
-    };
+   document.getElementById("fit").onclick = () => {
+  fitWidth = true;
+  fitHeight = false;
+  renderPages();
+};
+
+document.getElementById("fitHeight").onclick = () => {
+  fitWidth = false;
+  fitHeight = true;
+  renderPages();
+};
 
     document.getElementById("smaller").onclick = () => {
       fitWidth = false;
@@ -264,7 +282,7 @@ letter-spacing: 0.8px;
     window.addEventListener("resize", () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
-        if (fitWidth) renderPages();
+      if (fitWidth || fitHeight) renderPages();
       }, 200);
     });
 
