@@ -6,38 +6,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Adam Kaminsky — Portfolio</title>
   <style>
-    body {
-      margin: 12px;
-      background: #e8e5dc;
-      color: #222;
-      font-family: Arial, sans-serif;
-    }
+ 
+body {
+  margin: 12px;
+  background: #e8e5dc;
+  color: #222222;
+  font-family: Arial, Helvetica, sans-serif;
+}
 
-    h1 {
-      font-size: 22px;
-      margin-bottom: 5px;
-    }
+/* Project navigation tabs */
+.tabs button {
+  padding: 9px 12px;
+  background: #d4d0c5;
+  color: #222222;
+  border: 1px solid #77776e;
+  border-bottom: none;
+  border-radius: 0;
+  cursor: pointer;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.3px;
+}
 
-    .tabs {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      margin: 18px 0 12px;
-      border-bottom: 2px solid #333;
-    }
+/* Currently selected project */
+.tabs button.active {
+  background: #56664b;
+  color: #ffffff;
+  border-color: #56664b;
+}
 
-    .tabs button {
-      padding: 9px 12px;
-      background: #d4d0c5;
-      border: 1px solid #777;
-      border-bottom: none;
-      cursor: pointer;
-      font-weight: bold;
-    }
+/* Hover effect */
+.tabs button:hover {
+  background: #aab29e;
+  color: #222222;
+}
 
-    .tabs button.active {
-      background: #fff;
-    }
+/* Keep the selected tab distinct when hovering */
+.tabs button.active:hover {
+  background: #56664b;
+  color: #ffffff;
+}
+
 
 
     .toolbar {
