@@ -1,0 +1,244 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adam Kaminsky — Portfolio</title>
+  <style>
+    body {
+      margin: 12px;
+      background: #e8e5dc;
+      color: #222;
+      font-family: Arial, sans-serif;
+    }
+
+    h1 {
+      font-size: 22px;
+      margin-bottom: 5px;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin: 18px 0 12px;
+      border-bottom: 2px solid #333;
+    }
+
+    .tabs button {
+      padding: 9px 12px;
+      background: #d4d0c5;
+      border: 1px solid #777;
+      border-bottom: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .tabs button.active {
+      background: #fff;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding: 10px;
+      background: #d4d0c5;
+      border: 1px solid #888;
+    }
+
+    button, select {
+      font-size: 14px;
+      padding: 5px 9px;
+    }
+
+    #pdf-viewer {
+      margin: 0 auto;
+      padding: 12px 0;
+      overflow: auto;
+    }
+
+    .page {
+      margin: 0 auto 12px;
+      background: white;
+      box-shadow: 0 1px 4px #999;
+    }
+
+    .page canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    #status {
+      padding: 12px 0;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>ADAM KAMINSKY</h1>
+  <div>Landscape Architecture · Selected Works</div>
+
+  <nav class="tabs" id="tabs">
+    <button class="active" data-pdf="portfolio.pdf">PORTFOLIO</button>
+    <button data-pdf="project1.pdf">PROJECT 1</button>
+    <button data-pdf="project2.pdf">PROJECT 2</button>
+    <button data-pdf="documents.pdf">DOCUMENTS</button>
+  </nav>
+
+  <div class="toolbar">
+    <button id="minus">−</button>
+    <span id="zoom-label">100%</span>
+    <button id="plus">+</button>
+    <button id="fit">FIT WIDTH</button>
+    <button id="smaller">SMALLER</button>
+    <button id="larger">LARGER</button>
+    <span id="page-count"></span>
+  </div>
+
+  <div id="status">Loading PDF viewer…</div>
+  <main id="pdf-viewer"></main>
+
+  <script type="module">
+    import * as pdfjsLib from
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs";
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+
+    const viewer = document.getElementById("pdf-viewer");
+    const status = document.getElementById("status");
+    const zoomLabel = document.getElementById("zoom-label");
+    const pageCount = document.getElementById("page-count");
+
+    let pdf = null;
+    let zoom = 1;
+    let fitWidth = true;
+    let renderId = 0;
+
+    async function loadPDF(filename) {
+      const thisRender = ++renderId;
+      viewer.replaceChildren();
+      status.textContent = "Loading " + filename + "…";
+      pageCount.textContent = "";
+      pdf = null;
+
+      try {
+        const task = pdfjsLib.getDocument(filename);
+        const documentPDF = await task.promise;
+        if (thisRender !== renderId) return;
+
+        pdf = documentPDF;
+        status.textContent = "";
+        pageCount.textContent = pdf.numPages + " pages";
+        await renderPages(thisRender);
+      } catch (error) {
+        if (thisRender !== renderId) return;
+        status.textContent =
+          "Could not load " + filename +
+          ". Upload that PDF to this folder, using the exact filename.";
+        console.error(error);
+      }
+    }
+
+    async function renderPages(thisRender = renderId) {
+      if (!pdf) return;
+
+      const currentPDF = pdf;
+      viewer.replaceChildren();
+      zoomLabel.textContent = Math.round(zoom * 100) + "%";
+
+      for (let n = 1; n <= currentPDF.numPages; n++) {
+        if (thisRender !== renderId) return;
+
+        const page = await currentPDF.getPage(n);
+        if (thisRender !== renderId) return;
+
+        const base = page.getViewport({ scale: 1 });
+        const availableWidth = Math.max(240, viewer.clientWidth - 24);
+        const scale = fitWidth
+          ? availableWidth / base.width
+          : zoom;
+
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        const ratio = window.devicePixelRatio || 1;
+
+        canvas.width = Math.floor(viewport.width * ratio);
+        canvas.height = Math.floor(viewport.height * ratio);
+        canvas.style.width = viewport.width + "px";
+        canvas.style.height = viewport.height + "px";
+
+        const wrapper = document.createElement("section");
+        wrapper.className = "page";
+        wrapper.style.width = viewport.width + "px";
+        wrapper.appendChild(canvas);
+        viewer.appendChild(wrapper);
+
+        await page.render({
+          canvasContext: context,
+          viewport,
+          transform: ratio !== 1
+            ? [ratio, 0, 0, ratio, 0, 0]
+            : null
+        }).promise;
+      }
+    }
+
+    document.getElementById("tabs").addEventListener("click", event => {
+      const button = event.target.closest("button[data-pdf]");
+      if (!button) return;
+
+      document.querySelectorAll(".tabs button").forEach(tab =>
+        tab.classList.toggle("active", tab === button)
+      );
+
+      loadPDF(button.dataset.pdf);
+    });
+
+    document.getElementById("minus").onclick = () => {
+      fitWidth = false;
+      zoom = Math.max(0.25, zoom - 0.1);
+      renderPages();
+    };
+
+    document.getElementById("plus").onclick = () => {
+      fitWidth = false;
+      zoom = Math.min(3, zoom + 0.1);
+      renderPages();
+    };
+
+    document.getElementById("fit").onclick = () => {
+      fitWidth = true;
+      renderPages();
+    };
+
+    document.getElementById("smaller").onclick = () => {
+      fitWidth = false;
+      zoom = Math.max(0.25, zoom - 0.1);
+      renderPages();
+    };
+
+    document.getElementById("larger").onclick = () => {
+      fitWidth = false;
+      zoom = Math.min(3, zoom + 0.1);
+      renderPages();
+    };
+
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (fitWidth) renderPages();
+      }, 200);
+    });
+
+    loadPDF("portfolio.pdf");
+  </script>
+</body>
+</html>
