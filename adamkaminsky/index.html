@@ -179,11 +179,15 @@ letter-spacing: 0.8px;
 
     async function renderPages(thisRender = renderId) {
       if (!pdf) return;
+const currentPDF = pdf;
 
-      const currentPDF = pdf;
-      viewer.replaceChildren();
-      zoomLabel.textContent = Math.round(zoom * 100) + "%";
+// Remember the current scroll position
+const savedScrollTop = viewer.scrollTop;
+const savedScrollLeft = viewer.scrollLeft;
 
+viewer.replaceChildren();
+zoomLabel.textContent = Math.round(zoom * 100) + "%";
+     
       for (let n = 1; n <= currentPDF.numPages; n++) {
         if (thisRender !== renderId) return;
 
@@ -226,7 +230,10 @@ if (fitWidth) {
             ? [ratio, 0, 0, ratio, 0, 0]
             : null
         }).promise;
-      }
+      }  // Restore the previous scroll position
+      viewer.scrollTop = savedScrollTop;
+      viewer.scrollLeft = savedScrollLeft;
+    }
     }
 
     document.getElementById("tabs").addEventListener("click", event => {
