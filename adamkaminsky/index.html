@@ -185,12 +185,15 @@
     }
 
 
-async function renderPages(thisRender = renderId) {
+
+async function renderPages() {
   if (!pdf) return;
 
+  // Each new render supersedes any older render still running.
+  const thisRender = ++renderId;
   const currentPDF = pdf;
 
-  // Save the current viewing position.
+  // Choose a fixed point in the visible PDF area as our anchor.
   const markerY = Math.max(
     110,
     viewer.getBoundingClientRect().top
@@ -201,36 +204,42 @@ async function renderPages(thisRender = renderId) {
   );
 
   let savedPageIndex = 0;
-  let savedPageOffset = 0;
+  let savedPageFraction = 0;
 
+  // Record the exact relative position within the visible page.
   for (let i = 0; i < oldPages.length; i++) {
     const rect = oldPages[i].getBoundingClientRect();
 
-    if (rect.bottom > markerY) {
+    if (rect.bottom > markerY && rect.height > 0) {
       savedPageIndex = i;
-      savedPageOffset = markerY - rect.top;
+      savedPageFraction = Math.max(
+        0,
+        Math.min(1, (markerY - rect.top) / rect.height)
+      );
       break;
     }
   }
 
-  // Keep the viewer from collapsing while pages are recreated.
-  const oldHeight = viewer.offsetHeight;
-  viewer.style.minHeight = oldHeight + "px";
-
-  viewer.replaceChildren();
   zoomLabel.textContent = Math.round(zoom * 100) + "%";
 
+  // Build the replacement pages separately, leaving the old
+  // pages visible and in place while rendering takes place.
+  const stagedPages = document.createDocumentFragment();
+
   for (let n = 1; n <= currentPDF.numPages; n++) {
-    if (thisRender !== renderId) return;
+    if (thisRender !== renderId || currentPDF !== pdf) return;
 
     const page = await currentPDF.getPage(n);
-    if (thisRender !== renderId) return;
+
+    if (thisRender !== renderId || currentPDF !== pdf) return;
 
     const base = page.getViewport({ scale: 1 });
+
     const availableWidth = Math.max(
       240,
       viewer.clientWidth - 24
     );
+
     const availableHeight = Math.max(
       200,
       window.innerHeight - 140
@@ -260,7 +269,7 @@ async function renderPages(thisRender = renderId) {
     wrapper.className = "page";
     wrapper.style.width = viewport.width + "px";
     wrapper.appendChild(canvas);
-    viewer.appendChild(wrapper);
+    stagedPages.appendChild(wrapper);
 
     await page.render({
       canvasContext: context,
@@ -269,24 +278,29 @@ async function renderPages(thisRender = renderId) {
         ? [ratio, 0, 0, ratio, 0, 0]
         : null
     }).promise;
+
+    if (thisRender !== renderId || currentPDF !== pdf) return;
   }
 
-  if (thisRender !== renderId) return;
+  // Only the newest render is allowed to update the viewer.
+  if (thisRender !== renderId || currentPDF !== pdf) return;
 
-  // Restore the previous viewing position.
+  // Replace all pages in one operation.
+  viewer.replaceChildren(stagedPages);
+
+  // Restore the same relative point on the same page.
   const newPages = viewer.querySelectorAll(".page");
   const targetPage = newPages[savedPageIndex];
 
   if (targetPage) {
     const newRect = targetPage.getBoundingClientRect();
-    const desiredTop = markerY - savedPageOffset;
+    const desiredTop = markerY -
+      savedPageFraction * newRect.height;
 
     window.scrollBy(0, newRect.top - desiredTop);
   }
-
-  // Let the new layout settle, then remove the temporary height.
-  viewer.style.minHeight = "";
 }
+
 
     // Switch projects.
     document.getElementById("tabs").addEventListener("click", event => {
