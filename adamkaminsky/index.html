@@ -39,15 +39,20 @@
       background: #fff;
     }
 
+
     .toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-      padding: 10px;
-      background: #d4d0c5;
-      border: 1px solid #888;
-    }
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background: #d4d0c5;
+  border: 1px solid #888;
+
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
 
     button, select {
       font-size: 14px;
@@ -95,8 +100,6 @@
     <span id="zoom-label">100%</span>
     <button id="plus">+</button>
     <button id="fit">FIT WIDTH</button>
-    <button id="smaller">SMALLER</button>
-    <button id="larger">LARGER</button>
     <span id="page-count"></span>
   </div>
 
