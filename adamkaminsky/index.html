@@ -17,11 +17,10 @@ body {
 /* Project navigation tabs */
 .tabs button {
   padding: 9px 12px;
-  background: #d4d0c5;
-  color: #222222;
+  background: var(--tab-color, #d4d0c5) !important;
+  color: var(--tab-text, #222222) !important;
   border: 1px solid #77776e;
-  border-bottom: none;
-  border-radius: 0;
+  border-radius: 4px 4px 0 0;
   cursor: pointer;
   font-family: Arial, Helvetica, sans-serif;
   font-size: 13px;
@@ -101,7 +100,7 @@ body {
 <nav class="tabs" id="tabs">
   <button class="active" data-pdf="Kaminsky_Portfolio.pdf"
     style="--tab-color: #56664b; --tab-text: #ffffff;">
-    PORTFOLIO
+    Portfolio
   </button>
 
   <button data-pdf="Rio_Puerco_Report.pdf"
