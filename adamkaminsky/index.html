@@ -266,17 +266,7 @@ document.getElementById("fitHeight").onclick = () => {
   renderPages();
 };
 
-    document.getElementById("smaller").onclick = () => {
-      fitWidth = false;
-      zoom = Math.max(0.25, zoom - 0.1);
-      renderPages();
-    };
-
-    document.getElementById("larger").onclick = () => {
-      fitWidth = false;
-      zoom = Math.min(3, zoom + 0.1);
-      renderPages();
-    };
+ 
 
     let resizeTimer;
     window.addEventListener("resize", () => {
