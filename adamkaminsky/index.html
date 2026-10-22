@@ -1,43 +1,59 @@
 
 <!DOCTYPE html>
 <html lang="en">
-<head>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Adam Kaminsky — Portfolio</title>
+  <title>Adam E. Kaminsky — Portfolio</title>
   <style>
-    body {
-      margin: 12px;
-      background: #e8e5dc;
-      color: #222;
-      font-family: Arial, sans-serif;
-    }
+ 
+body {
+  margin: 12px;
+  background: #e8e5dc;
+  color: #222222;
+   font-family: "Manrope", Arial, sans-serif;
+}
 
-    h1 {
-      font-size: 22px;
-      margin-bottom: 5px;
-    }
 
-    .tabs {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      margin: 18px 0 12px;
-      border-bottom: 2px solid #333;
-    }
+/* All tabs: neutral background by default */
+.tabs button {
+  padding: 9px 12px;
+  background: #d4d0c5 !important;
+  color: #222222 !important;
+  border: 1px solid #77776e;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+   font-family: "Manrope", Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
 
-    .tabs button {
-      padding: 9px 12px;
-      background: #d4d0c5;
-      border: 1px solid #777;
-      border-bottom: none;
-      cursor: pointer;
-      font-weight: bold;
-    }
+/* Selected tab: show its individual project color */
+.tabs button.active {
+  background: var(--tab-color, #56664b) !important;
+  color: var(--tab-text, #ffffff) !important;
+  border-color: var(--tab-color, #56664b);
+}
 
-    .tabs button.active {
-      background: #fff;
-    }
+/* Optional: subtle hover effect for inactive tabs */
+.tabs button:not(.active):hover {
+  background: #c5c2b7 !important;
+  color: #222222 !important;
+}
+
+
+/* Keep the selected tab distinct when hovering */
+.tabs button.active:hover {
+  background: #56664b;
+  color: #ffffff;
+}
+
 
 
     .toolbar {
@@ -85,15 +101,30 @@
 </head>
 <body>
 
-  <h1>ADAM KAMINSKY</h1>
-  <div>Landscape Architecture · Selected Works</div>
+  <h1>ADAM E. KAMINSKY</h1>
+  
 
-  <nav class="tabs" id="tabs">
-    <button class="active" data-pdf="portfolio.pdf">PORTFOLIO</button>
-    <button data-pdf="project1.pdf">PROJECT 1</button>
-    <button data-pdf="project2.pdf">PROJECT 2</button>
-    <button data-pdf="documents.pdf">DOCUMENTS</button>
-  </nav>
+<nav class="tabs" id="tabs">
+  <button class="active" data-pdf="Kaminsky_Portfolio.pdf"
+    style="--tab-color: #56664b; --tab-text: #ffffff;">
+    Portfolio
+  </button>
+
+  <button data-pdf="Rio_Puerco_Report.pdf"
+    style="--tab-color: #A34040; --tab-text: #ffffff;">
+    Rio Puerco Report
+  </button>
+
+  <button data-pdf="Indigenous_Rights_Toolkit.pdf"
+    style="--tab-color: #CFA548; --tab-text: #222222;">
+    Indigenous Rights Toolkit
+  </button>
+
+  <button data-pdf="Negotiations_Manual.pdf"
+    style="--tab-color: #6060DB; --tab-text: #ffffff;">
+    Negotiations Manual
+  </button>
+</nav>
 
   <div class="toolbar">
     <button id="minus">−</button>
