@@ -186,14 +186,13 @@
 
 
 
-async function renderPages() {
+
+async function renderPages(thisRender = renderId) {
   if (!pdf) return;
 
-  // Each new render supersedes any older render still running.
-  const thisRender = ++renderId;
   const currentPDF = pdf;
 
-  // Choose a fixed point in the visible PDF area as our anchor.
+  // Save the current viewing position.
   const markerY = Math.max(
     110,
     viewer.getBoundingClientRect().top
@@ -204,42 +203,36 @@ async function renderPages() {
   );
 
   let savedPageIndex = 0;
-  let savedPageFraction = 0;
+  let savedPageOffset = 0;
 
-  // Record the exact relative position within the visible page.
   for (let i = 0; i < oldPages.length; i++) {
     const rect = oldPages[i].getBoundingClientRect();
 
-    if (rect.bottom > markerY && rect.height > 0) {
+    if (rect.bottom > markerY) {
       savedPageIndex = i;
-      savedPageFraction = Math.max(
-        0,
-        Math.min(1, (markerY - rect.top) / rect.height)
-      );
+      savedPageOffset = markerY - rect.top;
       break;
     }
   }
 
+  // Keep the viewer from collapsing while pages are recreated.
+  const oldHeight = viewer.offsetHeight;
+  viewer.style.minHeight = oldHeight + "px";
+
+  viewer.replaceChildren();
   zoomLabel.textContent = Math.round(zoom * 100) + "%";
 
-  // Build the replacement pages separately, leaving the old
-  // pages visible and in place while rendering takes place.
-  const stagedPages = document.createDocumentFragment();
-
   for (let n = 1; n <= currentPDF.numPages; n++) {
-    if (thisRender !== renderId || currentPDF !== pdf) return;
+    if (thisRender !== renderId) return;
 
     const page = await currentPDF.getPage(n);
-
-    if (thisRender !== renderId || currentPDF !== pdf) return;
+    if (thisRender !== renderId) return;
 
     const base = page.getViewport({ scale: 1 });
-
     const availableWidth = Math.max(
       240,
       viewer.clientWidth - 24
     );
-
     const availableHeight = Math.max(
       200,
       window.innerHeight - 140
@@ -269,7 +262,7 @@ async function renderPages() {
     wrapper.className = "page";
     wrapper.style.width = viewport.width + "px";
     wrapper.appendChild(canvas);
-    stagedPages.appendChild(wrapper);
+    viewer.appendChild(wrapper);
 
     await page.render({
       canvasContext: context,
@@ -278,27 +271,23 @@ async function renderPages() {
         ? [ratio, 0, 0, ratio, 0, 0]
         : null
     }).promise;
-
-    if (thisRender !== renderId || currentPDF !== pdf) return;
   }
 
-  // Only the newest render is allowed to update the viewer.
-  if (thisRender !== renderId || currentPDF !== pdf) return;
+  if (thisRender !== renderId) return;
 
-  // Replace all pages in one operation.
-  viewer.replaceChildren(stagedPages);
-
-  // Restore the same relative point on the same page.
+  // Restore the previous viewing position.
   const newPages = viewer.querySelectorAll(".page");
   const targetPage = newPages[savedPageIndex];
 
   if (targetPage) {
     const newRect = targetPage.getBoundingClientRect();
-    const desiredTop = markerY -
-      savedPageFraction * newRect.height;
+    const desiredTop = markerY - savedPageOffset;
 
     window.scrollBy(0, newRect.top - desiredTop);
   }
+
+  // Let the new layout settle, then remove the temporary height.
+  viewer.style.minHeight = "";
 }
 
 
@@ -325,34 +314,35 @@ function scheduleZoomRender() {
 }
 
 // Zoom out.
-document.getElementById("minus").onclick = () => {
-  fitWidth = false;
-  fitHeight = false;
-  zoom = Math.max(0.25, zoom - 0.1);
-  scheduleZoomRender();
-};
+    document.getElementById("minus").onclick = () => {
+      fitWidth = false;
+      fitHeight = false;
+      zoom = Math.max(0.25, zoom - 0.1);
+      renderPages();
+    };
 
-// Zoom in.
-document.getElementById("plus").onclick = () => {
-  fitWidth = false;
-  fitHeight = false;
-  zoom = Math.min(3, zoom + 0.1);
-  scheduleZoomRender();
-};
+    // Zoom in.
+    document.getElementById("plus").onclick = () => {
+      fitWidth = false;
+      fitHeight = false;
+      zoom = Math.min(3, zoom + 0.1);
+      renderPages();
+    };
 
-// Fit page width.
-document.getElementById("fit").onclick = () => {
-  fitWidth = true;
-  fitHeight = false;
-  scheduleZoomRender();
-};
+    // Fit page width.
+    document.getElementById("fit").onclick = () => {
+      fitWidth = true;
+      fitHeight = false;
+      renderPages();
+    };
 
-// Fit page height.
-document.getElementById("fitHeight").onclick = () => {
-  fitWidth = false;
-  fitHeight = true;
-  scheduleZoomRender();
-};
+    // Fit page height.
+    document.getElementById("fitHeight").onclick = () => {
+      fitWidth = false;
+      fitHeight = true;
+      renderPages();
+    };
+
 
 
     // Recalculate fitted pages when the window changes size.
