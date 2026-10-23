@@ -91,14 +91,7 @@
       font-size: 14px;
     }
 
-```css
-#download-bar {
-  position: relative;
-  z-index: 1;
-  padding: 8px 12px;
-  background: #e8e5dc;
-  border-bottom: 1px solid #222;
-}
+
 
 #download-button {
   display: inline-block;
@@ -161,6 +154,14 @@
     <span id="page-count"></span>
   </div>
 
+#download-bar {
+  position: relative;
+  z-index: 1;
+  padding: 8px 12px;
+  background: #e8e5dc;
+  border-bottom: 1px solid #222;
+}
+
   <div id="status">Loading PDF viewer…</div>
   <main id="pdf-viewer"></main>
 
@@ -169,7 +170,6 @@
     Download PDF ↓
   </a>
 </div>
-```
 
 <script type="module">
   import * as pdfjsLib from
