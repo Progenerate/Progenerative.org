@@ -135,231 +135,374 @@
   <div id="status">Loading PDF viewer…</div>
   <main id="pdf-viewer"></main>
 
-  <script type="module">
-    import * as pdfjsLib from
-      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs";
 
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+<script type="module">
+  import * as pdfjsLib from
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs";
 
-    const viewer = document.getElementById("pdf-viewer");
-    const status = document.getElementById("status");
-    const zoomLabel = document.getElementById("zoom-label");
-    const pageCount = document.getElementById("page-count");
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
 
-    let pdf = null;
-    let zoom = 1;
-    let fitWidth = true;
-    let fitHeight = false;
-    let renderId = 0;
+  const viewer = document.getElementById("pdf-viewer");
+  const status = document.getElementById("status");
+  const zoomLabel = document.getElementById("zoom-label");
+  const pageCount = document.getElementById("page-count");
 
-    async function loadPDF(filename) {
-      const thisRender = ++renderId;
+  let pdf = null;
+  let zoom = 1;
+  let fitWidth = true;
+  let fitHeight = false;
 
-      viewer.replaceChildren();
-      status.textContent = "Loading " + filename + "…";
-      pageCount.textContent = "";
-      pdf = null;
+  let renderId = 0;
+  let layoutId = 0;
+  let pageInfo = [];
+  let renderTasks = new Map();
+  let renderedPages = new Map();
+  let zoomRenderTimer;
+  let resizeTimer;
+  let scrollTimer;
+  let renderingNearby = false;
 
+  function getScale(info) {
+    const availableWidth = Math.max(240, viewer.clientWidth - 24);
+    const availableHeight = Math.max(200, window.innerHeight - 140);
+
+    if (fitWidth) return availableWidth / info.width;
+    if (fitHeight) return availableHeight / info.height;
+    return zoom;
+  }
+
+  function cancelPageRenders() {
+    for (const task of renderTasks.values()) {
       try {
-        const task = pdfjsLib.getDocument(filename);
-        const documentPDF = await task.promise;
-
-        if (thisRender !== renderId) return;
-
-        pdf = documentPDF;
-        status.textContent = "";
-        pageCount.textContent = pdf.numPages + " pages";
-
-        // Reset to the beginning when changing projects.
-        window.scrollTo(0, 0);
-        await renderPages(thisRender);
+        task.cancel();
       } catch (error) {
-        if (thisRender !== renderId) return;
-
-        status.textContent =
-          "Could not load " + filename +
-          ". Check that the PDF is in this folder and the filename matches.";
-        console.error(error);
+        // A task may already have finished.
       }
     }
 
+    renderTasks.clear();
+  }
 
+  async function loadPDF(filename) {
+    const thisRender = ++renderId;
+    ++layoutId;
 
+    cancelPageRenders();
+    viewer.replaceChildren();
+    pageInfo = [];
+    renderedPages.clear();
 
-async function renderPages(thisRender = renderId) {
-  if (!pdf) return;
+    status.textContent = "Loading " + filename + "…";
+    pageCount.textContent = "";
+    pdf = null;
 
-  const currentPDF = pdf;
+    try {
+      const task = pdfjsLib.getDocument(filename);
+      const documentPDF = await task.promise;
 
-  // Save the current viewing position.
-  const markerY = Math.max(
-    110,
-    viewer.getBoundingClientRect().top
-  );
+      if (thisRender !== renderId) return;
 
-  const oldPages = Array.from(
-    viewer.querySelectorAll(".page")
-  );
+      pdf = documentPDF;
+      status.textContent = "";
+      pageCount.textContent = pdf.numPages + " pages";
 
-  let savedPageIndex = 0;
-  let savedPageOffset = 0;
+      // Get page dimensions to create lightweight placeholders.
+      for (let n = 1; n <= pdf.numPages; n++) {
+        if (thisRender !== renderId) return;
 
-  for (let i = 0; i < oldPages.length; i++) {
-    const rect = oldPages[i].getBoundingClientRect();
+        const page = await pdf.getPage(n);
+        if (thisRender !== renderId) return;
 
-    if (rect.bottom > markerY) {
-      savedPageIndex = i;
-      savedPageOffset = markerY - rect.top;
-      break;
+        const base = page.getViewport({ scale: 1 });
+
+        pageInfo.push({
+          number: n,
+          width: base.width,
+          height: base.height
+        });
+      }
+
+      if (thisRender !== renderId) return;
+
+      window.scrollTo(0, 0);
+      buildPageLayout(false);
+    } catch (error) {
+      if (thisRender !== renderId) return;
+
+      status.textContent =
+        "Could not load " + filename +
+        ". Check that the PDF is in this folder and the filename matches.";
+
+      console.error(error);
     }
   }
 
-  // Keep the viewer from collapsing while pages are recreated.
-  const oldHeight = viewer.offsetHeight;
-  viewer.style.minHeight = oldHeight + "px";
+  function buildPageLayout(preservePosition = true) {
+    if (!pdf || !pageInfo.length) return;
 
-  viewer.replaceChildren();
-  zoomLabel.textContent = Math.round(zoom * 100) + "%";
+    const thisLayout = ++layoutId;
+    cancelPageRenders();
+    renderedPages.clear();
 
-  for (let n = 1; n <= currentPDF.numPages; n++) {
-    if (thisRender !== renderId) return;
+    // Save the visible page and position within it.
+    const markerY = Math.max(110, viewer.getBoundingClientRect().top);
+    const oldPages = Array.from(viewer.querySelectorAll(".page"));
 
-    const page = await currentPDF.getPage(n);
-    if (thisRender !== renderId) return;
+    let anchorIndex = 0;
+    let anchorFraction = 0;
 
-    const base = page.getViewport({ scale: 1 });
-    const availableWidth = Math.max(
-      240,
-      viewer.clientWidth - 24
-    );
-    const availableHeight = Math.max(
-      200,
-      window.innerHeight - 140
-    );
+    if (preservePosition) {
+      for (let i = 0; i < oldPages.length; i++) {
+        const rect = oldPages[i].getBoundingClientRect();
 
-    let scale;
-
-    if (fitWidth) {
-      scale = availableWidth / base.width;
-    } else if (fitHeight) {
-      scale = availableHeight / base.height;
-    } else {
-      scale = zoom;
+        if (rect.bottom > markerY && rect.height > 0) {
+          anchorIndex = i;
+          anchorFraction = Math.max(
+            0,
+            Math.min(1, (markerY - rect.top) / rect.height)
+          );
+          break;
+        }
+      }
     }
 
-    const viewport = page.getViewport({ scale });
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    const ratio = window.devicePixelRatio || 1;
+    zoomLabel.textContent = Math.round(
+      (fitWidth || fitHeight)
+        ? getScale(pageInfo[0])
+        : zoom
+    * 100) + "%";
 
-    canvas.width = Math.floor(viewport.width * ratio);
-    canvas.height = Math.floor(viewport.height * ratio);
-    canvas.style.width = viewport.width + "px";
-    canvas.style.height = viewport.height + "px";
+    // Create correctly sized placeholders for all pages.
+    const fragment = document.createDocumentFragment();
 
-    const wrapper = document.createElement("section");
-    wrapper.className = "page";
-    wrapper.style.width = viewport.width + "px";
-    wrapper.appendChild(canvas);
-    viewer.appendChild(wrapper);
+    for (const info of pageInfo) {
+      const scale = getScale(info);
+      const wrapper = document.createElement("section");
 
-    await page.render({
-      canvasContext: context,
-      viewport,
-      transform: ratio !== 1
-        ? [ratio, 0, 0, ratio, 0, 0]
-        : null
-    }).promise;
+      wrapper.className = "page";
+      wrapper.dataset.pageNumber = info.number;
+      wrapper.style.width = Math.ceil(info.width * scale) + "px";
+      wrapper.style.height = Math.ceil(info.height * scale) + "px";
+      wrapper.style.minHeight = Math.ceil(info.height * scale) + "px";
+
+      fragment.appendChild(wrapper);
+    }
+
+    viewer.replaceChildren(fragment);
+
+    // Restore the same relative position on the same page.
+    if (preservePosition) {
+      const target = viewer.querySelectorAll(".page")[anchorIndex];
+
+      if (target) {
+        const newRect = target.getBoundingClientRect();
+        const desiredTop = markerY - anchorFraction * newRect.height;
+
+        window.scrollBy(0, newRect.top - desiredTop);
+      }
+    }
+
+    requestAnimationFrame(() => {
+      if (thisLayout === layoutId) renderNearbyPages();
+    });
   }
 
-  if (thisRender !== renderId) return;
+  async function renderOnePage(index, thisLayout) {
+    if (
+      thisLayout !== layoutId ||
+      !pdf ||
+      index < 0 ||
+      index >= pageInfo.length
+    ) return;
 
-  // Restore the previous viewing position.
-  const newPages = viewer.querySelectorAll(".page");
-  const targetPage = newPages[savedPageIndex];
+    const info = pageInfo[index];
+    const key = info.number;
+    const wrapper = viewer.querySelector(
+      '.page[data-page-number="' + key + '"]'
+    );
 
-  if (targetPage) {
-    const newRect = targetPage.getBoundingClientRect();
-    const desiredTop = markerY - savedPageOffset;
+    if (!wrapper || renderedPages.has(key) || renderTasks.has(key)) {
+      return;
+    }
 
-    window.scrollBy(0, newRect.top - desiredTop);
-  }
+    const currentPDF = pdf;
+    const scale = getScale(info);
 
-  // Let the new layout settle, then remove the temporary height.
-  viewer.style.minHeight = "";
-}
+    try {
+      const page = await currentPDF.getPage(key);
 
+      if (
+        thisLayout !== layoutId ||
+        currentPDF !== pdf ||
+        !wrapper.isConnected
+      ) return;
 
-    // Switch projects.
-    document.getElementById("tabs").addEventListener("click", event => {
-      const button = event.target.closest("button[data-pdf]");
-      if (!button) return;
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+      const ratio = window.devicePixelRatio || 1;
 
-      document.querySelectorAll("#tabs button").forEach(tab => {
-        tab.classList.toggle("active", tab === button);
+      canvas.width = Math.floor(viewport.width * ratio);
+      canvas.height = Math.floor(viewport.height * ratio);
+      canvas.style.width = viewport.width + "px";
+      canvas.style.height = viewport.height + "px";
+      canvas.style.display = "block";
+
+      wrapper.appendChild(canvas);
+
+      const task = page.render({
+        canvasContext: context,
+        viewport,
+        transform: ratio !== 1
+          ? [ratio, 0, 0, ratio, 0, 0]
+          : null
       });
 
-      loadPDF(button.dataset.pdf);
+      renderTasks.set(key, task);
+      await task.promise;
+
+      if (
+        thisLayout === layoutId &&
+        currentPDF === pdf &&
+        wrapper.isConnected
+      ) {
+        renderedPages.set(key, scale);
+      }
+    } catch (error) {
+      if (
+        error?.name !== "RenderingCancelledException" &&
+        thisLayout === layoutId
+      ) {
+        console.error("Could not render PDF page " + key, error);
+      }
+    } finally {
+      renderTasks.delete(key);
+    }
+  }
+
+  async function renderNearbyPages() {
+    if (!pdf || !pageInfo.length || renderingNearby) return;
+
+    const thisLayout = layoutId;
+    const wrappers = Array.from(viewer.querySelectorAll(".page"));
+
+    if (!wrappers.length) return;
+
+    // Find the visible range of pages.
+    let firstVisible = -1;
+    let lastVisible = -1;
+
+    for (let i = 0; i < wrappers.length; i++) {
+      const rect = wrappers[i].getBoundingClientRect();
+
+      if (rect.bottom > 0 && rect.top < window.innerHeight) {
+        if (firstVisible === -1) firstVisible = i;
+        lastVisible = i;
+      }
+    }
+
+    if (firstVisible === -1) return;
+
+    // Render the visible pages plus one neighbor on each side.
+    const start = Math.max(0, firstVisible - 1);
+    const end = Math.min(wrappers.length - 1, lastVisible + 1);
+
+    renderingNearby = true;
+
+    try {
+      for (let i = start; i <= end; i++) {
+        if (thisLayout !== layoutId) return;
+        await renderOnePage(i, thisLayout);
+      }
+    } finally {
+      renderingNearby = false;
+    }
+
+    // If the user scrolled during rendering, catch up to the new position.
+    if (thisLayout === layoutId) {
+      const visibleNow = Array.from(viewer.querySelectorAll(".page"));
+      const hasUnrenderedVisiblePage = visibleNow.some(wrapper => {
+        const rect = wrapper.getBoundingClientRect();
+        const number = Number(wrapper.dataset.pageNumber);
+
+        return (
+          rect.bottom > 0 &&
+          rect.top < window.innerHeight &&
+          !renderedPages.has(number) &&
+          !renderTasks.has(number)
+        );
+      });
+
+      if (hasUnrenderedVisiblePage) {
+        requestAnimationFrame(renderNearbyPages);
+      }
+    }
+  }
+
+  // Render additional pages as the user scrolls.
+  window.addEventListener("scroll", () => {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(renderNearbyPages, 60);
+  }, { passive: true });
+
+  // Switch projects.
+  document.getElementById("tabs").addEventListener("click", event => {
+    const button = event.target.closest("button[data-pdf]");
+    if (!button) return;
+
+    document.querySelectorAll("#tabs button").forEach(tab => {
+      tab.classList.toggle("active", tab === button);
     });
 
-    
-let zoomRenderTimer;
+    loadPDF(button.dataset.pdf);
+  });
 
-function scheduleZoomRender() {
-  clearTimeout(zoomRenderTimer);
-  zoomRenderTimer = setTimeout(() => {
-    renderPages();
-  }, 120);
-}
+  function scheduleZoomRender() {
+    clearTimeout(zoomRenderTimer);
+    zoomRenderTimer = setTimeout(() => {
+      buildPageLayout(true);
+    }, 120);
+  }
 
-// Zoom out.
-    document.getElementById("minus").onclick = () => {
-      fitWidth = false;
-      fitHeight = false;
-      zoom = Math.max(0.25, zoom - 0.1);
-      renderPages();
-    };
+  document.getElementById("minus").onclick = () => {
+    fitWidth = false;
+    fitHeight = false;
+    zoom = Math.max(0.25, zoom - 0.1);
+    scheduleZoomRender();
+  };
 
-    // Zoom in.
-    document.getElementById("plus").onclick = () => {
-      fitWidth = false;
-      fitHeight = false;
-      zoom = Math.min(3, zoom + 0.1);
-      renderPages();
-    };
+  document.getElementById("plus").onclick = () => {
+    fitWidth = false;
+    fitHeight = false;
+    zoom = Math.min(3, zoom + 0.1);
+    scheduleZoomRender();
+  };
 
-    // Fit page width.
-    document.getElementById("fit").onclick = () => {
-      fitWidth = true;
-      fitHeight = false;
-      renderPages();
-    };
+  document.getElementById("fit").onclick = () => {
+    fitWidth = true;
+    fitHeight = false;
+    scheduleZoomRender();
+  };
 
-    // Fit page height.
-    document.getElementById("fitHeight").onclick = () => {
-      fitWidth = false;
-      fitHeight = true;
-      renderPages();
-    };
+  document.getElementById("fitHeight").onclick = () => {
+    fitWidth = false;
+    fitHeight = true;
+    scheduleZoomRender();
+  };
 
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
 
+    resizeTimer = setTimeout(() => {
+      if (fitWidth || fitHeight) {
+        buildPageLayout(true);
+      }
+    }, 200);
+  });
 
-    // Recalculate fitted pages when the window changes size.
-    let resizeTimer;
+  loadPDF("Kaminsky_Portfolio.pdf");
+</script>
 
-    window.addEventListener("resize", () => {
-      clearTimeout(resizeTimer);
-
-      resizeTimer = setTimeout(() => {
-        if (fitWidth || fitHeight) {
-          renderPages();
-        }
-      }, 200);
-    });
-
-    // Load the portfolio using the actual filename from the tab.
-    loadPDF("Kaminsky_Portfolio.pdf");
-  </script>
 </body>
 </html>
