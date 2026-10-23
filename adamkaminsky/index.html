@@ -131,7 +131,34 @@
   background: #c5c0b4;
   color: #222;
 }
-```
+
+
+    /* Phone layout */
+@media (max-width: 600px) {
+  #header-image {
+    position: static;
+    display: block;
+    width: 180px;
+    height: 100px;
+    margin: 10px 10px 12px auto;
+  }
+
+  .tabs {
+    padding-right: 0;
+    gap: 4px;
+  }
+
+  .tabs button {
+    padding: 7px 8px;
+    font-size: 12px;
+    letter-spacing: 0.4px;
+  }
+
+  .toolbar {
+    gap: 6px;
+    padding: 7px;
+  }
+}
     
   </style>
 </head>
