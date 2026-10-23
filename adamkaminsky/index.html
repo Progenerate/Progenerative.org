@@ -533,17 +533,28 @@
     scrollTimer = setTimeout(renderNearbyPages, 60);
   }, { passive: true });
 
-  // Switch projects.
+   // Switch projects or show contact information.
   document.getElementById("tabs").addEventListener("click", event => {
-    const button = event.target.closest("button[data-pdf]");
+    const button = event.target.closest("#tabs button");
     if (!button) return;
 
     document.querySelectorAll("#tabs button").forEach(tab => {
       tab.classList.toggle("active", tab === button);
     });
 
-  document.getElementById("download-button").href = button.dataset.pdf;
-loadPDF(button.dataset.pdf);
+    if (button.dataset.contact) {
+      // Contact tab selected.
+      document.getElementById("download-bar").style.display = "none";
+      document.getElementById("pdf-viewer").style.display = "none";
+      return;
+    }
+
+    // PDF project tab selected.
+    document.getElementById("download-bar").style.display = "";
+    document.getElementById("pdf-viewer").style.display = "";
+    document.getElementById("download-button").href = button.dataset.pdf;
+    loadPDF(button.dataset.pdf);
+  });
   });
 
   function scheduleZoomRender() {
