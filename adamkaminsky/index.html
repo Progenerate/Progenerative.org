@@ -90,6 +90,35 @@
       padding: 12px 0;
       font-size: 14px;
     }
+
+```css
+#download-bar {
+  position: relative;
+  z-index: 1;
+  padding: 8px 12px;
+  background: #e8e5dc;
+  border-bottom: 1px solid #222;
+}
+
+#download-button {
+  display: inline-block;
+  padding: 8px 14px;
+  border: 1px solid #222;
+  background: #d4d0c5;
+  color: #222;
+  text-decoration: none;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+#download-button:hover {
+  background: #56664b;
+  color: #fff;
+}
+```
+    
   </style>
 </head>
 
@@ -135,6 +164,12 @@
   <div id="status">Loading PDF viewer…</div>
   <main id="pdf-viewer"></main>
 
+<div id="download-bar">
+  <a id="download-button" href="Kaminsky_Portfolio.pdf" download>
+    Download PDF ↓
+  </a>
+</div>
+```
 
 <script type="module">
   import * as pdfjsLib from
@@ -455,7 +490,8 @@
       tab.classList.toggle("active", tab === button);
     });
 
-    loadPDF(button.dataset.pdf);
+  document.getElementById("download-button").href = button.dataset.pdf;
+loadPDF(button.dataset.pdf);
   });
 
   function scheduleZoomRender() {
