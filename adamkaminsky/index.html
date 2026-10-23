@@ -465,32 +465,54 @@
     }, 300);
   }
 
-  document.getElementById("minus").onclick = () => {
-    fitWidth = false;
-    fitHeight = false;
-    zoom = Math.max(0.25, zoom - 0.1);
-    scheduleZoomRender();
-  };
+ function getCurrentPageScale() {
+  const pages = Array.from(viewer.querySelectorAll(".page"));
 
-  document.getElementById("plus").onclick = () => {
-    fitWidth = false;
-    fitHeight = false;
-    zoom = Math.min(3, zoom + 0.1);
-    scheduleZoomRender();
-  };
+  const currentPage = pages.find(page => {
+    const rect = page.getBoundingClientRect();
+    return rect.bottom > 0 && rect.top < window.innerHeight;
+  });
 
-  document.getElementById("fit").onclick = () => {
-    fitWidth = true;
-    fitHeight = false;
-    scheduleZoomRender();
-  };
+  const pageNumber = Number(
+    currentPage?.dataset.pageNumber || 1
+  );
 
-  document.getElementById("fitHeight").onclick = () => {
-    fitWidth = false;
-    fitHeight = true;
-    scheduleZoomRender();
-  };
+  return getScale(pageInfo[pageNumber - 1]);
+}
 
+document.getElementById("minus").onclick = () => {
+  if (fitWidth || fitHeight) {
+    zoom = getCurrentPageScale();
+  }
+
+  fitWidth = false;
+  fitHeight = false;
+  zoom = Math.max(0.25, zoom - 0.1);
+  scheduleZoomRender();
+};
+
+document.getElementById("plus").onclick = () => {
+  if (fitWidth || fitHeight) {
+    zoom = getCurrentPageScale();
+  }
+
+  fitWidth = false;
+  fitHeight = false;
+  zoom = Math.min(3, zoom + 0.1);
+  scheduleZoomRender();
+};
+
+document.getElementById("fit").onclick = () => {
+  fitWidth = true;
+  fitHeight = false;
+  scheduleZoomRender();
+};
+
+document.getElementById("fitHeight").onclick = () => {
+  fitWidth = false;
+  fitHeight = true;
+  scheduleZoomRender();
+};
   window.addEventListener("resize", () => {
     clearTimeout(resizeTimer);
 
